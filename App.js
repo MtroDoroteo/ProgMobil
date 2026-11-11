@@ -19,6 +19,7 @@ import { auth } from './firebase/connect';
 import Login from './windows/LoginScreen';
 import Registro from './windows/RegistroScreen';
 import Recuperar from './windows/RecuperarContra';
+import SpotifyScreen from './windows/Spoty';
 
 import Home from './windows/Home';
 import Perfil from './windows/Perfil';
@@ -28,6 +29,8 @@ import Menu from './windows/Menu';
 
 import { estilosApp, opcionesMenuInferior } from './Styles/AppStyles';
 import { colores } from './Styles/HomeStyles';
+
+import { StatusBar } from 'expo-status-bar';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -119,6 +122,14 @@ function MainTabs() {
         />
 
         <Tab.Screen
+          name="Spoty"
+          component={SpotifyScreen}
+          listeners={{
+            focus: () => setPantallaActiva('Spoty'),
+          }}
+        />
+
+        <Tab.Screen
           name="Perfil"
           component={Perfil}
           listeners={{
@@ -172,6 +183,7 @@ export default function App() {
           size="large"
           color={colores.naranja}
         />
+        <StatusBar hidden={true} />
       </View>
     );
   }

@@ -1,301 +1,219 @@
-// ============================================================
-// Perfil.js
-// Pantalla de perfil del usuario (React Native).
-// Los estilos viven en PerfilStyles.js.
-// ============================================================
-import React from 'react';
-import {
-  View,
-  Text,
-  Image,
-  ScrollView,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-} from 'react-native';
-import { estilos, colores, medidas } from '../Styles/PerfilStyles';
+import React, { useEffect, useState, useMemo } from 'react';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Dimensions } from 'react-native';
+import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { supabase } from '../supabase/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Slider from '@react-native-community/slider';
 
-// ------------------------------------------------------------
-// 1. DATOS DE EJEMPLO
-// Por ahora son datos fijos para replicar el diseño.
-// Más adelante se reemplazan por los datos reales del usuario
-// guardados en Firebase (por ejemplo, con useEffect + getDoc).
-// ------------------------------------------------------------
-const usuario = {
-  nombre: 'Alex Rivera',
-  usuario: '@alex_rivera',
-  avatar: null, // URL de la foto; si es null se muestra la inicial del nombre
-  verificado: true,
-};
+const { width } = Dimensions.get('window');
+const DEFAULT_COVER = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60';
 
-// Estadísticas sociales (se dibujan con un divisor entre cada una)
-const estadisticasSociales = [
-  { id: 'seguidores', valor: 200, etiqueta: 'Followers' },
-  { id: 'siguiendo', valor: 100, etiqueta: 'Following' },
-  { id: 'siguiendo2', valor: 50, etiqueta: 'Following' },
-];
+export default function FullScreenPlayer() {
+  const audioUrl = useMemo(() => {
+    const { data } = supabase.storage.from('music/background').getPublicUrl('background.mp3');
+    return data.publicUrl;
+  }, []);
 
-const racha = { dias: 68 };
-const marcaPersonal = { distancia: '10km', tiempo: '48:15' };
+  const coverUrl = useMemo(() => {
+    const { data } = supabase.storage.from('music/background').getPublicUrl('cover.webp');
+    return data.publicUrl || DEFAULT_COVER;
+  }, []);
 
-// Resumen semanal.
-// "proporcion" va de 0 a 1: qué tan alta es la barra respecto al máximo.
-// Con 0 se dibuja la barra gris (día sin actividad).
-const resumenSemanal = {
-  tiempoTotal: '7h 35m',
-  sesiones: 4,
-  dias: [
-    { id: 'd1', letra: 'M', proporcion: 0.78 },
-    { id: 'd2', letra: 'M', proporcion: 1 },
-    { id: 'd3', letra: 'J', proporcion: 0 },
-    { id: 'd4', letra: 'V', proporcion: 0.7 },
-    { id: 'd5', letra: 'S', proporcion: 0 },
-    { id: 'd6', letra: 'D', proporcion: 0 },
-    { id: 'd7', letra: 'L', proporcion: 0 },
-  ],
-};
+  const player = useAudioPlayer(audioUrl);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(1); // Evitar división por cero
 
-// Lista de entrenamientos recientes
-const entrenamientos = [
-  {
-    id: 'e1',
-    emoji: '🏃',
-    nombre: 'Carrera Matutina',
-    fecha: 'Lun 8 Oct',
-    hora: '11:30',
-    distancia: '8.5 km',
-    duracion: '58 min',
-    calorias: 890,
-  },
-  {
-    id: 'e2',
-    emoji: '🚴',
-    nombre: 'Ciclismo',
-    fecha: 'Dom 7 Oct',
-    hora: '09:15',
-    distancia: '25 km',
-    duracion: '1h 12m',
-    calorias: 650,
-  },
-  {
-    id: 'e3',
-    emoji: '🏋️',
-    nombre: 'Gimnasio',
-    fecha: 'Vie 5 Oct',
-    hora: '18:00',
-    distancia: null, // el gimnasio no tiene distancia
-    duracion: '1h 15m',
-    calorias: 420,
-  },
-];
+  useEffect(() => {
+    async function initPlayer() {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        interruptionMode: 'mixWithOthers',
+      });
 
-// ------------------------------------------------------------
-// 2. COMPONENTES PEQUEÑOS (dentro del mismo archivo)
-// ------------------------------------------------------------
+      player.loop = true;
+      player.volume = 0.4;
 
-// Una estadística social: número arriba, etiqueta abajo
-const EstadisticaSocial = ({ valor, etiqueta }) => (
-  <View style={estilos.redItem}>
-    <Text style={estilos.redValor}>{valor}</Text>
-    <Text style={estilos.redEtiqueta}>{etiqueta}</Text>
-  </View>
-);
+      const estadoGuardado = await AsyncStorage.getItem('@estado_musica');
+      if (estadoGuardado === 'apagado') {
+        player.pause();
+        setIsPlaying(false);
+      } else {
+        player.play();
+        setIsPlaying(true);
+      }
+    }
 
-// Una barra de la gráfica semanal
-const BarraDia = ({ letra, proporcion }) => {
-  const tieneActividad = proporcion > 0;
+    initPlayer();
 
-  // Con actividad: altura proporcional. Sin actividad: barra gris completa.
-  const altura = tieneActividad
-    ? medidas.alturaBarra * proporcion
-    : medidas.alturaBarra;
+    // Intervalo para actualizar el progreso de la canción
+    const interval = setInterval(() => {
+      if (player && player.currentTime !== undefined) {
+        setCurrentTime(player.currentTime);
+        if (player.duration) setDuration(player.duration);
+      }
+    }, 500);
+
+    return () => {
+      clearInterval(interval);
+      player.pause();
+    };
+  }, [player]);
+
+  const togglePlay = async () => {
+    if (isPlaying) {
+      player.pause();
+      setIsPlaying(false);
+      await AsyncStorage.setItem('@estado_musica', 'apagado');
+    } else {
+      player.play();
+      setIsPlaying(true);
+      await AsyncStorage.setItem('@estado_musica', 'encendido');
+    }
+  };
+
+  // Adelantar o retroceder 10 segundos
+  const skipTime = (seconds) => {
+    const newTime = Math.max(0, Math.min(currentTime + seconds, duration));
+    player.seekTo(newTime);
+    setCurrentTime(newTime);
+  };
+
+  // Formatear segundos a formato MM:SS
+  const formatTime = (secs) => {
+    const minutes = Math.floor(secs / 60);
+    const remainingSeconds = Math.floor(secs % 60);
+    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+  };
 
   return (
-    <View style={estilos.barraColumna}>
-      <View
-        style={[
-          estilos.barra,
-          tieneActividad ? estilos.barraLlena : estilos.barraVacia,
-          { height: altura },
-        ]}
-      />
-      <Text style={estilos.barraDia}>{letra}</Text>
-    </View>
-  );
-};
+    <View style={styles.container}>
+      {/* Carátula grande estilo álbum */}
+      <Image source={{ uri: coverUrl }} style={styles.coverImage} />
 
-// Una tarjeta de la lista de entrenamientos recientes
-const TarjetaEntrenamiento = ({ numero, entrenamiento, onPress }) => {
-  // Armamos la segunda línea: "11:30 | 8.5 km - 58 min | 🔥 890 cal"
-  const distancia = entrenamiento.distancia
-    ? `${entrenamiento.distancia} - `
-    : '';
-  const detalle = `${entrenamiento.hora} | ${distancia}${entrenamiento.duracion} | 🔥 ${entrenamiento.calorias} cal`;
-
-  return (
-    <TouchableOpacity
-      style={estilos.entrenoTarjeta}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      {/* Número de posición en la lista */}
-      <Text style={estilos.entrenoNumero}>{numero}</Text>
-
-      {/* Título + fecha, y debajo el detalle */}
-      <View style={estilos.entrenoInfo}>
-        <Text style={estilos.entrenoTitulo} numberOfLines={1}>
-          {entrenamiento.emoji} {entrenamiento.nombre}
-          <Text style={estilos.entrenoFecha}> - {entrenamiento.fecha}</Text>
-        </Text>
-        <Text style={estilos.entrenoDetalle}>{detalle}</Text>
+      {/* Información de la pista */}
+      <View style={styles.infoContainer}>
+        <Text style={styles.songTitle}>Background Track</Text>
+        <Text style={styles.artistName}>Supabase Audio Experience</Text>
       </View>
 
-      {/* Flecha a la derecha */}
-      <Text style={estilos.entrenoFlecha}>›</Text>
-    </TouchableOpacity>
-  );
-};
+      {/* Barra de progreso interactiva (Slider) */}
+      <View style={styles.progressContainer}>
+        <Slider
+          style={styles.slider}
+          minimumValue={0}
+          maximumValue={duration}
+          value={currentTime}
+          onSlidingComplete={(value) => player.seekTo(value)}
+          minimumTrackTintColor="#1DB954"
+          maximumTrackTintColor="#535353"
+          thumbTintColor="#FFFFFF"
+        />
+        <View style={styles.timeRow}>
+          <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
+          <Text style={styles.timeText}>{formatTime(duration)}</Text>
+        </View>
+      </View>
 
-// ------------------------------------------------------------
-// 3. PANTALLA PRINCIPAL
-// "navigation" llega por props si usas React Navigation.
-// ------------------------------------------------------------
-export default function Perfil({ navigation }) {
-  // Si no hay foto, mostramos la primera letra del nombre
-  const inicial = usuario.nombre.charAt(0).toUpperCase();
+      {/* Controles de reproducción */}
+      <View style={styles.controlsContainer}>
+        {/* Retroceder 10s */}
+        <TouchableOpacity onPress={() => skipTime(-10)} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>⏮ -10s</Text>
+        </TouchableOpacity>
 
-  return (
-    <SafeAreaView style={estilos.contenedor}>
-      <StatusBar barStyle="dark-content" backgroundColor={colores.fondo} />
+        {/* Play / Pause Principal */}
+        <TouchableOpacity style={styles.playButton} onPress={togglePlay} activeOpacity={0.8}>
+          <Text style={styles.playButtonIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+        </TouchableOpacity>
 
-      {/* ---------- Encabezado fijo (fuera del ScrollView) ---------- */}
-      <View style={estilos.encabezado}>
-        <View style={estilos.encabezadoEspacio} />
-        <Text style={estilos.encabezadoTitulo}>Perfil</Text>
-        <TouchableOpacity
-          style={estilos.botonAjustes}
-          onPress={() => navigation?.navigate('Ajustes')} // pantalla de ajustes
-        >
-          <Text style={estilos.iconoAjustes}>⚙️</Text>
+        {/* Adelantar 10s */}
+        <TouchableOpacity onPress={() => skipTime(10)} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>+10s ⏭</Text>
         </TouchableOpacity>
       </View>
-
-      {/* ---------- Contenido con scroll ---------- */}
-      <ScrollView
-        contentContainerStyle={estilos.scrollContenido}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ===== Avatar, nombre y botón Editar Perfil ===== */}
-        <View style={estilos.perfilFila}>
-          <View style={estilos.avatarContenedor}>
-            {usuario.avatar ? (
-              <Image source={{ uri: usuario.avatar }} style={estilos.avatar} />
-            ) : (
-              <View style={[estilos.avatar, estilos.avatarPlaceholder]}>
-                <Text style={estilos.avatarInicial}>{inicial}</Text>
-              </View>
-            )}
-
-            {/* Insignia verde de verificado */}
-            {usuario.verificado && (
-              <View style={estilos.insignia}>
-                <Text style={estilos.insigniaTexto}>✓</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={estilos.perfilInfo}>
-            <Text style={estilos.nombre}>{usuario.nombre}</Text>
-            <Text style={estilos.usuario}>{usuario.usuario}</Text>
-
-            <TouchableOpacity
-              style={estilos.botonEditar}
-              onPress={() => navigation?.navigate('EditarPerfil')}
-            >
-              <Text style={estilos.botonEditarTexto}>Editar Perfil</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* ===== Estadísticas sociales (3 columnas con divisores) ===== */}
-        <View style={estilos.redesFila}>
-          {estadisticasSociales.map((item, indice) => (
-            <React.Fragment key={item.id}>
-              {/* Divisor vertical antes de la 2ª y 3ª estadística */}
-              {indice > 0 && <View style={estilos.redDivisor} />}
-              <EstadisticaSocial valor={item.valor} etiqueta={item.etiqueta} />
-            </React.Fragment>
-          ))}
-        </View>
-
-        {/* ===== Tarjetas: Racha actual y Marca personal ===== */}
-        <View style={estilos.tarjetasFila}>
-          {/* Racha actual (azul) */}
-          <View style={estilos.tarjetaRacha}>
-            <Text style={estilos.tarjetaTitulo}>Racha Actual</Text>
-            <View style={estilos.tarjetaValorFila}>
-              <Text style={estilos.tarjetaEmoji}>🔥</Text>
-              <Text style={estilos.tarjetaValorRacha}>¡{racha.dias} días!</Text>
-            </View>
-            <Text style={estilos.tarjetaSubtitulo}>Mantenla viva!</Text>
-          </View>
-
-          {/* Marca personal (durazno) */}
-          <View style={estilos.tarjetaMarca}>
-            <Text style={estilos.tarjetaTitulo}>🏆 Marca Personal PR</Text>
-            <View style={estilos.tarjetaValorFila}>
-              <Text style={estilos.tarjetaEmoji}>🏆</Text>
-              <Text style={estilos.tarjetaValorMarca}>
-                {marcaPersonal.distancia}: {marcaPersonal.tiempo}
-              </Text>
-            </View>
-            <Text style={estilos.tarjetaSubtitulo}>Nuevo Récord!</Text>
-          </View>
-        </View>
-
-        {/* ===== Estadísticas semanales (gráfica de barras) ===== */}
-        <View style={estilos.semanaTarjeta}>
-          <Text style={estilos.semanaTitulo}>📊 Estadísticas Semanales</Text>
-
-          {/* Tiempo total | número de sesiones */}
-          <View style={estilos.semanaResumenFila}>
-            <Text style={estilos.semanaResumen}>{resumenSemanal.tiempoTotal}</Text>
-            <View style={estilos.semanaSeparador} />
-            <Text style={estilos.semanaResumen}>
-              {resumenSemanal.sesiones} Sessions: {resumenSemanal.sesiones}
-            </Text>
-          </View>
-
-          {/* Una barra por día */}
-          <View style={estilos.barrasFila}>
-            {resumenSemanal.dias.map((dia) => (
-              <BarraDia
-                key={dia.id}
-                letra={dia.letra}
-                proporcion={dia.proporcion}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* ===== Entrenamientos recientes ===== */}
-        <View style={estilos.entrenosContenedor}>
-          <Text style={estilos.entrenosTitulo}>Entrenamientos Recientes</Text>
-
-          {entrenamientos.map((entrenamiento, indice) => (
-            <TarjetaEntrenamiento
-              key={entrenamiento.id}
-              numero={indice + 1}
-              entrenamiento={entrenamiento}
-              onPress={() =>
-                navigation?.navigate('DetalleEntrenamiento', {
-                  id: entrenamiento.id,
-                })
-              }
-            />
-          ))}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#121212', // Fondo oscuro tipo Spotify
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  coverImage: {
+    width: width * 0.8,
+    height: width * 0.8,
+    borderRadius: 12,
+    backgroundColor: '#282828',
+    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  infoContainer: {
+    width: '100%',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  songTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  artistName: {
+    color: '#B3B3B3',
+    fontSize: 16,
+    marginTop: 5,
+  },
+  progressContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  slider: {
+    width: '100%',
+    height: 40,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  timeText: {
+    color: '#A7A7A7',
+    fontSize: 12,
+  },
+  controlsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    gap: 30,
+  },
+  playButton: {
+    width: 75,
+    height: 75,
+    borderRadius: 37.5,
+    backgroundColor: '#1DB954',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playButtonIcon: {
+    fontSize: 30,
+    color: '#FFFFFF',
+    marginLeft: 3,
+  },
+  secondaryButton: {
+    padding: 10,
+  },
+  secondaryButtonText: {
+    color: '#B3B3B3',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});

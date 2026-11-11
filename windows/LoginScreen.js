@@ -19,6 +19,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import styles from '../Styles/LoginStyles';
 
+import BackgroundMusic from '../assets/bg_music.js'
+
 const Login = ({ navigation }) => {
   const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
@@ -82,6 +84,7 @@ const Login = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          <BackgroundMusic />
           {/* ---------- LOGO ---------- */}
           <Image
             source={{
