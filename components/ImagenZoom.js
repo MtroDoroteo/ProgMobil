@@ -9,8 +9,6 @@ import Animated, {
   runOnJS
 } from 'react-native-reanimated';
 
-import { estilos } from '../Styles/ComicStyles';
-
 const ESCALA_MAXIMA = 4;   // zoom máximo con pellizco
 const ESCALA_DOBLE_TOQUE = 2; // zoom al hacer doble toque
 
@@ -131,11 +129,20 @@ export default function ImagenZoom({ uri, ancho, alto, alCambiarZoom }) {
     <GestureDetector gesture={gestos}>
 
       <Animated.View
-        style={[estilos.pagina, { width: ancho, height: alto }]}
+        style={[{
+          justifyContent: 'center',
+          alignItems: 'center',
+          overflow: 'hidden',
+          width: ancho,
+          height: alto
+        }]}
       >
         <Animated.Image
           source={{ uri }}
-          style={[estilos.imagenPagina, estiloAnimado]}
+          style={[{
+            width: '100%',
+            height: '100%'
+            }, estiloAnimado]}
           resizeMode="contain"
           onError={(error) =>
             console.log('Error al mostrar imagen:', uri, error.nativeEvent)
