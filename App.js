@@ -1,10 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 
 import {
   View,
   ActivityIndicator,
   TouchableOpacity,
+  Image
 } from 'react-native';
 
 import { NavigationContainer } from '@react-navigation/native';
@@ -20,12 +20,11 @@ import Login from './windows/LoginScreen';
 import Registro from './windows/RegistroScreen';
 import Recuperar from './windows/RecuperarContra';
 import SpotifyScreen from './windows/Spoty';
-
 import Home from './windows/Home';
 import Perfil from './windows/Perfil';
 import Entrenamientos from './windows/Entrenamientos';
-
 import Menu from './windows/Menu';
+import Comic from './windows/Comic';
 
 import { estilosApp, opcionesMenuInferior } from './Styles/AppStyles';
 import { colores } from './Styles/HomeStyles';
@@ -87,18 +86,25 @@ function MainTabs() {
             let iconName = 'help-circle';
 
             if (route.name === 'Home') {
-              iconName = 'home';
+              iconName = 'https://uewftnxhdybtgadpkuvb.supabase.co/storage/v1/object/public/assest/icons/10751558.png';
             } else if (route.name === 'Entrenamientos') {
-              iconName = 'dumbbell';
+              iconName = 'https://uewftnxhdybtgadpkuvb.supabase.co/storage/v1/object/public/assest/icons/2780119.png';
             } else if (route.name === 'Perfil') {
-              iconName = 'account-cog-outline';
+              iconName = 'https://cdn-icons-png.flaticon.com/512/5987/5987424.png';
+            } else if (route.name === 'Spoty'){
+              iconName = 'https://uewftnxhdybtgadpkuvb.supabase.co/storage/v1/object/public/assest/icons/Spotify_icon.svg.webp';
             }
 
             return (
-              <MaterialCommunityIcons
-                name={iconName}
-                size={size}
-                color={color}
+              <Image
+              source = {{
+                uri:iconName
+              }}
+              style={{
+                width:32,
+                height:32
+              }}
+              resizeMode='cover'
               />
             );
           },
@@ -126,6 +132,14 @@ function MainTabs() {
           component={SpotifyScreen}
           listeners={{
             focus: () => setPantallaActiva('Spoty'),
+          }}
+        />
+
+        <Tab.Screen
+          name="Comic"
+          component={Comic}
+          listeners={{
+            focus: () => setPantallaActiva('Comic'),
           }}
         />
 
@@ -220,6 +234,11 @@ export default function App() {
             <Stack.Screen
               name="Recuperar"
               component={Recuperar}
+            />
+
+            <Stack.Screen
+              name="Comic"
+              component={Comic}
             />
           </>
 

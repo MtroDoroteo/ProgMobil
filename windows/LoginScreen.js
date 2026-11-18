@@ -70,7 +70,7 @@ const Login = ({ navigation }) => {
   return (
     <ImageBackground
       source={{
-        uri:"https://template.canva.com/EAGT8mv6VSA/2/0/900w--jcJGjC9rZw.jpg"
+        uri:"https://uewftnxhdybtgadpkuvb.supabase.co/storage/v1/object/public/assest/background/900w--jcJGjC9rZw.webp"
       }}
       style={styles.safeArea}
       resizeMode="cover"

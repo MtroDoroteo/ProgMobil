@@ -58,7 +58,6 @@ export const estilos = StyleSheet.create({
   // ---------- Contenedor principal ----------
   contenedor: {
     flex: 1,
-    backgroundColor: colores.fondo,
   },
 
   // Contenido interno del ScrollView

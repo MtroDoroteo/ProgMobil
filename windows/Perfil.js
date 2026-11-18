@@ -12,7 +12,9 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
+  ImageBackground,
 } from 'react-native';
+
 import { estilos, colores, medidas } from '../Styles/PerfilStyles';
 import { signOut } from 'firebase/auth';
 import { collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
@@ -373,6 +375,13 @@ const cambiarFotoPerfil = async () => {
   const entrenamientos = datos.entrenamientos ?? [];
 
   return (
+    <ImageBackground
+      source={{
+        uri:"https://uewftnxhdybtgadpkuvb.supabase.co/storage/v1/object/public/assest/background/profil-back.jpg"
+      }}
+      style={{flex:1}}
+      resizeMode="cover"
+    >
     <SafeAreaView style={estilos.contenedor}>
       <StatusBar barStyle="dark-content" backgroundColor={colores.fondo} />
 
@@ -495,5 +504,6 @@ const cambiarFotoPerfil = async () => {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </ImageBackground>
   );
 }
