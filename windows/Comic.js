@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ImagenZoom from '../components/ImagenZoom';
-
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { estilos, colores } from '../Styles/ComicStyles';
